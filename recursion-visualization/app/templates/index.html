@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <title>Recursion Visualizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/recursive_tree_viz.css') }}">
+    <style>
+      :root {
+        --primary-color: #4361ee;
+        --secondary-color: #3f37c9;
+        --accent-color: #4895ef;
+        --light-color: #f8f9fa;
+        --dark-color: #212529;
+        --success-color: #4cc9f0;
+        --warning-color: #f72585;
+      }
+      
+      body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f5f7fa;
+        color: var(--dark-color);
+        line-height: 1.6;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+      }
+      
+      h1 {
+        color: var(--primary-color);
+        font-weight: 600;
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      
+      #function-code-container {
+        background: var(--light-color);
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+      }
+      
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
+      
+      select, textarea, input[type="text"], input[type="url"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        font-family: 'Fira Code', monospace;
+        transition: border-color 0.3s;
+      }
+      
+      select:focus, textarea:focus, input[type="text"]:focus, input[type="url"]:focus {
+        border-color: var(--accent-color);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+      }
+      
+      textarea {
+        min-height: 200px;
+        resize: vertical;
+      }
+      
+      #visualize-button {
+        background-color: var(--primary-color);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s;
+        display: block;
+        margin: 0 auto;
+      }
+      
+      #visualize-button:hover {
+        background-color: var(--secondary-color);
+        transform: translateY(-2px);
+      }
+      
+      #visualize-button:disabled {
+        background-color: #adb5bd;
+        cursor: not-allowed;
+      }
+      
+      #visualize-status {
+        display: block;
+        text-align: center;
+        margin: 1rem 0;
+        font-style: italic;
+        color: #6c757d;
+      }
+      
+      #permalink-area {
+        background: var(--light-color);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 2rem;
+      }
+      
+      #permalink-area label {
+        margin-bottom: 0.5rem;
+      }
+      
+      .function-example {
+        margin-bottom: 1rem;
+      }
+      
+      .example-title {
+        font-weight: 500;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+      }
+      
+      .example-code {
+        font-family: 'Fira Code', monospace;
+        background: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Recursion Visualizer</h1>
+      <div id="function-code-container">
+        <div class="row">
+          <div class="col-md-6">
+            <label>Try one of these examples:
+              <select id="function-select" class="form-control">
+                <option value="none">Choose an example...</option>
+                <option value="virfib">Fibonacci Sequence</option>
+                <option value="count_partitions">Integer Partitions</option>
+                <option value="luhn_sum">Luhn Algorithm</option>
+              </select>
+            </label>
+            
+            <div class="function-example">
+              <div class="example-title">Quick Examples:</div>
+              <div class="example-code" onclick="loadExample('virfib', 'virfib(4)')">Fibonacci: virfib(4)</div>
+              <div class="example-code" onclick="loadExample('count_partitions', 'count_partitions(5, 3)')">Partitions: count_partitions(5, 3)</div>
+              <div class="example-code" onclick="loadExample('luhn_sum', 'luhn_sum(5106)')">Luhn: luhn_sum(5106)</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label>Or write your own function:
+              <textarea id="function-definition-textarea" class="form-control" rows="10" placeholder="def my_recursive_function(n):&#10;    if n == 0:&#10;        return 1&#10;    return n * my_recursive_function(n-1)"></textarea>
+            </label>
+            
+            <label>Function call:
+              <input id="function-call-input" type="text" class="form-control" placeholder="my_recursive_function(5)"/>
+            </label>
+          </div>
+        </div>
+        
+        <div class="text-center">
+          <button id="visualize-button" type="button" class="btn btn-primary" disabled>Visualize Recursion</button>
+        </div>
+      </div>
+
+      <span id="visualize-status"></span>
+      
+      <!-- Hidden template definitions -->
+      <pre style="display:none" id="virfib-definition">
+def virfib(n):
+  if n == 0:
+    return 0
+  if n == 1:
+    return 1
+  else:
+    return virfib(n - 1) + virfib(n - 2)</pre>
+      
+      <pre style="display:none" id="count_partitions-definition">
+def count_partitions(n, m):
+    if n == 0:
+        return 1
+    elif n < 0:
+        return 0
+    elif m == 0:
+        return 0
+    else:
+        with_m = count_partitions(n-m, m)
+        without_m = count_partitions(n, m-1)
+        return with_m + without_m</pre>
+      
+      <pre style="display:none" id="luhn_sum-definition">
+def sum_digits(n):
+    if n < 10:
+        return n
+    else:
+        last = n % 10
+        all_but_last = n // 10
+        return last + sum_digits(all_but_last)
+
+def luhn_sum(n):
+    if n < 10:
+        return n
+    else:
+        last = n % 10
+        all_but_last = n // 10
+        return last + luhn_sum_double(all_but_last)
+
+def luhn_sum_double(n):
+    last = n % 10
+    all_but_last = n // 10
+    luhn_digit = sum_digits(last * 2)
+    if n < 10:
+        return luhn_digit
+    else:
+        return luhn_digit + luhn_sum(all_but_last)</pre>
+
+      <div id="placeholder" style="margin-top: 40px;"></div>
+
+      <div id="permalink-area" style="margin-top:12px; display:none;">
+        <label for="permalink-input">Share this visualization:</label> 
+        <input type="url" id="permalink-input" class="form-control">
+        
+      </div>
+    </div>
+
+    <!-- GraphViz WASM -->
+    <script src="https://cdn.jsdelivr.net/npm/@hpcc-js/wasm@2.18.0/dist/graphviz.umd.js"></script>
+    
+    <!-- Main Application Script -->
+    <script type="module">
+      import { RecursiveTreeViz } from "{{ url_for('static', filename='js/recursive_tree_viz.js') }}";
+      
+      // Helper function to load examples
+      window.loadExample = function(funcName, funcCall) {
+        const functionPre = document.getElementById(funcName + "-definition");
+        if (!functionPre) return;
+        document.getElementById('function-definition-textarea').value = functionPre.textContent.trim();
+        document.getElementById('function-call-input').value = funcCall;
+        document.getElementById('function-select').value = funcName;
+      };
+
+      // Form prefill functionality
+      function prefillFunction(event) {
+        const functionName = event.target.value;
+        if (functionName === "none") return;
+        loadExample(functionName, document.getElementById(functionName + "-call")?.textContent || "");
+      }
+
+      document.getElementById("function-select").addEventListener("change", prefillFunction);
+
+      // Handle URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const funcDef = urlParams.get('function_definition');
+      const funcCall = urlParams.get('function_call');
+      const hideFunc = urlParams.get('hide_function');
+      
+      if (funcDef) document.getElementById('function-definition-textarea').value = funcDef;
+      if (funcCall) document.getElementById('function-call-input').value = funcCall;
+      if (hideFunc == 'true') document.getElementById('function-code-container').style.display = "none";
+
+      // Main visualization function
+      async function computeVisualization() {
+        const functionDef = document.getElementById('function-definition-textarea').value;
+        const functionCall = document.getElementById('function-call-input').value;
+        
+        if (!functionDef.trim() || !functionCall.trim()) {
+          document.getElementById("visualize-status").textContent = "Please provide both a function definition and a function call.";
+          return;
+        }
+        
+        document.getElementById("visualize-status").textContent = "Computing call graph...";
+        document.getElementById("visualize-button").disabled = true;
+        
+        try {
+          const response = await fetch("/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              function_definition: functionDef,
+              function_call: functionCall
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            document.getElementById("visualize-status").textContent = "Rendering call graph...";
+            
+            const graphviz = await window.Graphviz.load();
+            const div = document.getElementById("placeholder");
+            div.innerHTML = graphviz.layout(data.dot_graph, "svg", "dot");
+            
+            new RecursiveTreeViz(div.querySelector('svg')).draw();
+            document.getElementById("visualize-status").textContent = "";
+            
+            // Generate permalink
+            const permalink = `${window.location.origin}/?function_definition=${
+              encodeURIComponent(functionDef)
+            }&function_call=${
+              encodeURIComponent(functionCall)
+            }`.replace(/\(/g, '%28').replace(/\)/g, '%29');
+            
+            document.getElementById("permalink-area").style.display = "block";
+            document.getElementById("permalink-input").value = permalink;
+          } else {
+            document.getElementById("visualize-status").textContent = `Error: ${data.message}`;
+            document.getElementById("visualize-status").style.color = "var(--warning-color)";
+          }
+        } catch (error) {
+          document.getElementById("visualize-status").textContent = `Error: ${error.message}`;
+          document.getElementById("visualize-status").style.color = "var(--warning-color)";
+        } finally {
+          document.getElementById("visualize-button").disabled = false;
+        }
+      }
+
+      // Initialize the application
+      document.getElementById("visualize-button").removeAttribute("disabled");
+      document.getElementById("visualize-button").addEventListener("click", computeVisualization);
+      
+      // Enable button when there's content
+      document.getElementById("function-definition-textarea").addEventListener("input", function() {
+        const hasContent = this.value.trim().length > 0 && 
+                         document.getElementById("function-call-input").value.trim().length > 0;
+        document.getElementById("visualize-button").disabled = !hasContent;
+      });
+      
+      document.getElementById("function-call-input").addEventListener("input", function() {
+        const hasContent = this.value.trim().length > 0 && 
+                         document.getElementById("function-definition-textarea").value.trim().length > 0;
+        document.getElementById("visualize-button").disabled = !hasContent;
+      });
+      
+      // Handle keyboard shortcuts
+      document.addEventListener("keypress", (e) => {
+        if (e.key == "p" || e.key == "ArrowLeft") {
+          const prevButton = document.querySelector(".svg-controls button:first-of-type");
+          if (prevButton && !prevButton.disabled) prevButton.click();
+        } else if (e.key == "n" || e.key == "ArrowRight") {
+          const nextButton = document.querySelector(".svg-controls button:last-of-type");
+          if (nextButton && !nextButton.disabled) nextButton.click();
+        }
+      });
+    </script>
+  </body>
+</html>
